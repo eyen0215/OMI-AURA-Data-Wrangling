@@ -5,6 +5,9 @@ import xarray as xr
 from tqdm import tqdm
 from math import radians, cos, sin, asin, sqrt
 
+"""
+The functions find_closest_index and get_sulfur_column_amount are no longer in use but could be useful in the future
+"""
 def find_closest_index(value, array):
     """
     Find the index of the value in the array that is closest to the input value.
@@ -38,9 +41,7 @@ def get_sulfur_column_amount(ntime_input, nxtrack_input, data, ntime_range=(594.
     sulfur_column_amount = data[closest_ntime_idx, closest_nxtrack_idx]
 
     return sulfur_column_amount
-# Example usage:
-# Assuming `sulfur_data` is the 2D array read from your nc4 file
-# sulfur_amount = get_sulfur_column_amount(612.5, 1.5, sulfur_data)
+
 #from: https://stackoverflow.com/questions/29545704/fast-haversine-approximation-python-pandas
 def haversine_np(lon1, lat1, lon2, lat2):
     """
@@ -60,24 +61,74 @@ def haversine_np(lon1, lat1, lon2, lat2):
     c = 2 * np.arcsin(np.sqrt(a))
     km = 6378.137 * c
     return km
-def haversine(lon1, lat1, lon2, lat2):
+
+def plot_array(array, label = "Value", cmap = 'viridis'):
     """
-    Calculate the great circle distance in kilometers between two points 
-    on the earth (specified in decimal degrees)
+    Plot an array heatmap
+
+    Parameters:
+    - array: Mandatory, input 2D numpy array
+    - label: Optional, input string for heatmap label
+    - cmap: Optional, input plt color map 
+
+    Returns:
+    - None
     """
-    # convert decimal degrees to radians 
-    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+    import matplotlib.pyplot as plt
+    plt.figure(figsize=(8, 8))  
+    plt.imshow(array, cmap='viridis', interpolation='nearest', aspect='auto')
+    plt.colorbar(label=label)
 
-    # haversine formula 
-    dlon = lon2 - lon1 
-    dlat = lat2 - lat1 
-    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-    c = 2 * asin(sqrt(a)) 
-    r = 6371 # Radius of earth in kilometers. Use 3956 for miles. Determines return value units.
-    return c * r
+    # Show the heatmap
+    plt.title('Array Heatmap')
+    plt.show()
 
-def get_lat_lon(Latitude, Longitude, latlon, ntimes_nxtrack, threshold):
+def get_lat_lon(Latitude, Longitude, latlon, ntimes_nxtrack, threshold, directions):
+    """
+    Finds the closest latitude and longitude pair to a target latitude and longitude by iteratively searching
+    through a Longitude and Latitude grid. The search begins at the midpoint of the grid and "steps" to neighboring points
+    in one of eight directions (up, down, left, right, and diagonals) until either a point within a specified
+    Haversine distance threshold is found or no closer point exists.
 
+    Parameters:
+    Latitude : 2D array-like
+        A 2D array of latitude values corresponding to the geographic grid.
+    
+    Longitude : 2D array-like
+        A 2D array of longitude values corresponding to the geographic grid.
+    
+    latlon : tuple
+        A tuple (target_lat, target_lon) containing the target latitude and longitude to search for.
+        
+    ntimes_nxtrack : tuple
+        A tuple containing the dimensions (ntimes, nxtrack) of the geographic grid.
+    
+    threshold : float
+        The maximum allowable Haversine distance (in kilometers) between the target and a point for the search
+        to terminate.
+    
+    directions : list of tuples
+        A list of tuples representing the possible directions to "step" to neighboring points in the grid.
+        Each tuple is of the form (dntime, dnxtrack), where `dntime` and `dnxtrack` are the relative changes
+        in the ntimes and nxtrack dimensions.
+
+    Returns:
+    --------
+    current_lat : float
+        The latitude of the closest point found during the search.
+    
+    current_lon : float
+        The longitude of the closest point found during the search.
+    
+    current_ntime : int
+        The `ntime` index of the closest point found during the search.
+    
+    current_nxtrack : int
+        The `nxtrack` index of the closest point found during the search.
+    
+    min_diff : float
+        The Haversine distance (in kilometers) between the closest point found and the target latitude/longitude.
+    """
     ntimes, nxtrack = ntimes_nxtrack
     current_ntime = ntimes // 2
     current_nxtrack = nxtrack // 2
@@ -93,14 +144,13 @@ def get_lat_lon(Latitude, Longitude, latlon, ntimes_nxtrack, threshold):
         
         # If the current difference meets the threshold, break the loop
         if distance <= threshold:
-            # print("broke")
             break
         
         # Initialize variables to track the best move
         min_diff = distance
         best_move = None
         
-        # Iterate over the 8 possible directions
+        # Iterate over the possible directions
         for dntime, dnxtrack in directions:
             new_ntime = current_ntime + dntime
             new_nxtrack = current_nxtrack + dnxtrack
@@ -126,29 +176,24 @@ def get_lat_lon(Latitude, Longitude, latlon, ntimes_nxtrack, threshold):
         
         # If no better move is found, return the current lat/lon and exit
         if best_move is None:
-            # print(min_diff, end = " ")
-            # print(f"No better move found. Closest lat/lon pair: {current_lat}, {current_lon} at ({current_ntime}, {current_nxtrack})")
-            #return current_lat, current_lon, best_move[0], best_move[1], min_diff
-
+            
             return current_lat,current_lon,current_ntime,current_nxtrack, min_diff
         
         # Otherwise, step to the best move
         current_ntime, current_nxtrack = best_move
         tries +=1
-        # print(f"Stepped to ({current_ntime}, {current_nxtrack}) with lat/lon: {Latitude[current_ntime][current_nxtrack]}, {Longitude[current_ntime][current_nxtrack]}")
-    # return current_lat,current_lon,current_ntime,current_nxtrack, new_diff
     return current_lat, current_lon, best_move[0], best_move[1], min_diff
 
 
 # Open the .nc4 file
-file_path = r"C:\Users\erich\Downloads\OMI-Aura_L2-OMSO2_2024m0910t1735-o107221_v003-2024m0911t122019.SUB.nc4"
-
+file_path = "src\OMI-Aura_L2-OMSO2_2024m0910t1735-o107221_v003-2024m0911t122019.SUB.nc4"
 nc_file = Dataset(file_path, mode='r')
+
 #setup data
 DataFields = nc_file["HDFEOS"]["SWATHS"]["OMI Total Column Amount SO2"]["Data Fields"]
 GeoLocationFields = nc_file["HDFEOS"]["SWATHS"]["OMI Total Column Amount SO2"]["Geolocation Fields"]
 
-Sulphur = DataFields.variables['ColumnAmountSO2'][:]
+Sulfur = DataFields.variables['ColumnAmountSO2'][:]
 Latitude, Longitude = GeoLocationFields["Latitude"][:], GeoLocationFields["Longitude"][:]
 
 min_lat = np.nanmin(Latitude)
@@ -158,12 +203,12 @@ max_lon = np.nanmax(Longitude)
 
 #PARAMETERS
 THRESHOLD = 0.1 
-directions = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+DIRECTIONS = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
 ntimes = len(Latitude)
 nxtrack = len(Latitude[0])
 
 disections = 100
-array_600x600 = np.full((disections, disections), np.nan)  
+res_array = np.full((disections, disections), np.nan)  
 lon_steps = np.linspace(min_lon, max_lon, disections)
 lat_steps = np.linspace(min_lat, max_lat, disections)
 
@@ -179,7 +224,7 @@ data_max_lon = np.nanmax(Longitude)
 
 for i in tqdm(range(disections)):
     
-    for j in tqdm(range(disections)):
+    for j in (range(disections)):
         current_lon = lon_steps[j]
         current_lat = lat_steps[i]
 
@@ -188,43 +233,9 @@ for i in tqdm(range(disections)):
                                             Longitude= Longitude,
                                             latlon = (current_lat, current_lon),
                                             ntimes_nxtrack= (ntimes, nxtrack),
-                                            threshold = THRESHOLD)
-        # print(lat, lan, end=" ")
-        # if j == 8:
-        #     print(lat,lon,time,track)
-        #     print(Sulphur[time][track])
-        array_600x600[i][j] = diff
-    
-lat, lon, time, track, diff = get_lat_lon(Latitude=Latitude,
-                                          Longitude=Longitude,
-                                        #   latlon=(-17.8713188,-70.1685),
-                                          latlon = (min_lat,min_lon),
-                                          ntimes_nxtrack=(ntimes,nxtrack),
-                                          threshold=THRESHOLD)
-print(lat,lon)
+                                            threshold = THRESHOLD,
+                                            directions = DIRECTIONS)
+        
+        res_array[i][j] = diff
 
-print(min_lat,min_lon)
-
-print(diff)
-# print(haversine_np(lon,lat,-70.1685,-17.8713188))
-print(haversine_np(lat,lon,min_lat,min_lon))
-print(haversine(lat,lon,min_lat,min_lon))
-
-
-
-
-
-
-# print(Sulphur[time][track])
-# print(len(array_600x600[0]))
-
-# print(f" min : {np.min(array_600x600)} \n max : {np.max(array_600x600)}")
-
-import matplotlib.pyplot as plt
-plt.figure(figsize=(8, 8))  # Adjust the size for better clarity
-plt.imshow(array_600x600, cmap='viridis', interpolation='nearest', aspect='auto')
-plt.colorbar(label='Value')
-
-# Show the heatmap
-plt.title('600x600 Array Heatmap')
-plt.show()
+plot_array(res_array, "Loss")
