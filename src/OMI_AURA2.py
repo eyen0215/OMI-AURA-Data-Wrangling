@@ -1,47 +1,7 @@
 from netCDF4 import Dataset
 import numpy as np
-from scipy.interpolate import griddata
 import xarray as xr
 from tqdm import tqdm
-from math import radians, cos, sin, asin, sqrt
-
-"""
-The functions find_closest_index and get_sulfur_column_amount are no longer in use but could be useful in the future
-"""
-def find_closest_index(value, array):
-    """
-    Find the index of the value in the array that is closest to the input value.
-    """
-    array = np.array(array)
-    return np.abs(array - value).argmin()
-
-def get_sulfur_column_amount(ntime_input, nxtrack_input, data, ntime_range=(594.0, 649.0), nxtrack_range=(1, 10)):
-    """
-    Retrieve the sulfur column amount for the nearest `ntime` and `nxtrack` in the nc4 file.
-    
-    Parameters:
-    - ntime_input: Input `ntime` float value.
-    - nxtrack_input: Input `nxtrack` float value.
-    - data: 2D array from nc4 file.
-    - ntime_range: Tuple representing the start and end of the `ntime` range.
-    - nxtrack_range: Tuple representing the start and end of the `nxtrack` range.
-    
-    Returns:
-    - The sulfur column amount at the nearest (ntime, nxtrack) position.
-    """
-
-    ntime_indices = np.linspace(ntime_range[0], ntime_range[1], data.shape[0])
-    nxtrack_indices = np.linspace(nxtrack_range[0], nxtrack_range[1], data.shape[1])
-
-    # Find the closest index for ntime and nxtrack
-    closest_ntime_idx = find_closest_index(ntime_input, ntime_indices)
-    closest_nxtrack_idx = find_closest_index(nxtrack_input, nxtrack_indices)
-
-    # Retrieve the sulfur column amount from the 2D data array
-    sulfur_column_amount = data[closest_ntime_idx, closest_nxtrack_idx]
-
-    return sulfur_column_amount
-
 
 #from: https://stackoverflow.com/questions/29545704/fast-haversine-approximation-python-pandas
 def haversine_np(lon1, lat1, lon2, lat2):
