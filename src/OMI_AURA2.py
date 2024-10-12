@@ -42,6 +42,7 @@ def get_sulfur_column_amount(ntime_input, nxtrack_input, data, ntime_range=(594.
 
     return sulfur_column_amount
 
+
 #from: https://stackoverflow.com/questions/29545704/fast-haversine-approximation-python-pandas
 def haversine_np(lon1, lat1, lon2, lat2):
     """
@@ -49,7 +50,6 @@ def haversine_np(lon1, lat1, lon2, lat2):
     on the earth (specified in decimal degrees)
     
     All args must be of equal length.    
-    
     """
     lon1, lat1, lon2, lat2 = map(np.radians, [lon1, lat1, lon2, lat2])
     
@@ -62,26 +62,40 @@ def haversine_np(lon1, lat1, lon2, lat2):
     km = 6378.137 * c
     return km
 
-def plot_array(array, label = "Value", cmap = 'viridis'):
+def plot_array(arrays, labels = "Value", cmap = 'viridis'):
     """
-    Plot an array heatmap
+    Plot an array heatmap on the given axis
 
     Parameters:
-    - array: Mandatory, input 2D numpy array
-    - label: Optional, input string for heatmap label
-    - cmap: Optional, input plt color map 
+    - arrays: Mandatory, list  of 2D numpy array
+    - labels: Optional, list of  strings for heatmap label
+    - cmap: Optional, input plt color map (default 'viridis')
 
     Returns:
     - None
     """
     import matplotlib.pyplot as plt
-    plt.figure(figsize=(8, 8))  
-    plt.imshow(array, cmap='viridis', interpolation='nearest', aspect='auto')
-    plt.colorbar(label=label)
+    num_arrays = len(arrays)
 
-    # Show the heatmap
-    plt.title('Array Heatmap')
+    #if labels not provided, generate default labels
+    if labels is None:
+        labels = [f"Array {i+1}" for i in range(num_arrays)]
+
+    _, axes = plt.subplots(1, num_arrays, figsize=(8 * num_arrays, 8))
+
+    #if only one array is provided, convert axes to list
+    if num_arrays ==1:
+        axes = [axes] 
+    
+    for i, (ax, array) in enumerate(zip(axes, arrays)):
+        cax = ax.imshow(array, cmap=cmap, interpolation='nearest', aspect='auto')
+        ax.set_title(f"Array {i+1} Heatmap")
+        plt.colorbar(cax, ax=ax, label=labels[i])
+    
+    plt.tight_layout()
     plt.show()
+
+
 
 def get_lat_lon(Latitude, Longitude, latlon, ntimes_nxtrack, threshold, directions):
     """
@@ -171,7 +185,6 @@ def get_lat_lon(Latitude, Longitude, latlon, ntimes_nxtrack, threshold, directio
                 # If this move results in a smaller difference, update the best move
                 if new_diff < min_diff:
                     min_diff = new_diff
-                    # print(min_diff)
                     best_move = (new_ntime, new_nxtrack)
         
         # If no better move is found, return the current lat/lon and exit
@@ -208,7 +221,8 @@ ntimes = len(Latitude)
 nxtrack = len(Latitude[0])
 
 disections = 100
-res_array = np.full((disections, disections), np.nan)  
+diff_array = np.full((disections, disections), np.nan)  
+sulf_array = np.full((disections, disections), np.nan)
 lon_steps = np.linspace(min_lon, max_lon, disections)
 lat_steps = np.linspace(min_lat, max_lat, disections)
 
@@ -236,6 +250,9 @@ for i in tqdm(range(disections)):
                                             threshold = THRESHOLD,
                                             directions = DIRECTIONS)
         
-        res_array[i][j] = diff
+        diff_array[i][j] = diff
+        sulf_array[i][j] = Sulfur[time][track]
 
-plot_array(res_array, "Loss")
+
+plot_array([diff_array, sulf_array],
+           ["Loss", "Vertical Sulfur Column Amount"])
