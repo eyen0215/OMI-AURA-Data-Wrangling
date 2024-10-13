@@ -7,7 +7,6 @@ This project processes and analyzes sulfur dioxide (SO₂) data from OMI (Ozone 
 The project uses the following Python libraries:
 - `netCDF4`
 - `numpy`
-- `scipy`
 - `xarray`
 - `tqdm`
 - `matplotlib`
