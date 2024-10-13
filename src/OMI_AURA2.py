@@ -169,36 +169,44 @@ GeoLocationFields = nc_file["HDFEOS"]["SWATHS"]["OMI Total Column Amount SO2"]["
 Sulfur = DataFields.variables['ColumnAmountSO2'][:]
 Latitude, Longitude = GeoLocationFields["Latitude"][:], GeoLocationFields["Longitude"][:]
 
-min_lat = np.nanmin(Latitude)
-max_lat = np.nanmax(Latitude)
-min_lon = np.nanmin(Longitude)
-max_lon = np.nanmax(Longitude)
-
 #PARAMETERS
-THRESHOLD = 0.1 
-DIRECTIONS = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+
+THRESHOLD = 0.1 #Minimum loss when finding closest (ntime,nxtrack). Can be adjusted for speed
+DIRECTIONS = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)] #Directions that can be stepped. Can be adjusted for interesting effects
+DISECTIONS = 100 #dimensions of the array. ex: DISECTIONS = 100 generates 100x100 resultant arrays. Can be adjusted for speed
+
 ntimes = len(Latitude)
 nxtrack = len(Latitude[0])
 
-disections = 100
-diff_array = np.full((disections, disections), np.nan)  
-sulf_array = np.full((disections, disections), np.nan)
-lon_steps = np.linspace(min_lon, max_lon, disections)
-lat_steps = np.linspace(min_lat, max_lat, disections)
 
-#min/max of lat/lon of the downloaded omi aura data
+diff_array = np.full((DISECTIONS, DISECTIONS), np.nan)  
+sulf_array = np.full((DISECTIONS, DISECTIONS), np.nan)
+
+#setup lat/lon steps through area
+lon_steps = np.linspace(np.nanmin(Longitude), np.nanmax(Longitude), DISECTIONS)
+lat_steps = np.linspace(np.nanmin(Latitude), np.nanmax(Latitude), DISECTIONS)
+
+#min/max of lat/lon of the specified omi aura data
+#used for testing the results of corners and sides of data range
 min_lat, min_lon = -18.788, -74.855
 max_lat, max_lon = -12.788, -68.855
 
 #min/max of lat/lon of the geo2d lat/lon file
+#used to find difference between the dimensions of the actual data downloaded and the specified data downloaded
+'''
+this is relevant because when downloading the satellite from the NASA OMI AURA website, we specified a certain
+data range (seen above in min_lat, min_lon, max_lat, max_lon) but most of the data actually downloaded only 
+corresponds to a subsection of this area. Thus there are lat/lon points that don't have any corresponding data
+and we should decide whether we should keep them as NaN or smooth them out
+'''
 data_min_lat = np.nanmin(Latitude)
 data_max_lat = np.nanmax(Latitude)
 data_min_lon = np.nanmin(Longitude)
 data_max_lon = np.nanmax(Longitude)
 
-for i in tqdm(range(disections)):
+for i in tqdm(range(DISECTIONS)):
     
-    for j in (range(disections)):
+    for j in (range(DISECTIONS)):
         current_lon = lon_steps[j]
         current_lat = lat_steps[i]
 
