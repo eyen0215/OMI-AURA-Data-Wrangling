@@ -2,6 +2,7 @@ from netCDF4 import Dataset
 import numpy as np
 import xarray as xr
 from tqdm import tqdm
+from haversine import haversine
 
 #from: https://stackoverflow.com/questions/29545704/fast-haversine-approximation-python-pandas
 def haversine_np(lon1, lat1, lon2, lat2):
@@ -114,7 +115,7 @@ def get_lat_lon(Latitude, Longitude, latlon, ntimes_nxtrack, threshold, directio
         current_lon = Longitude[current_ntime][current_nxtrack]
         
         # Calculate the current haversine difference
-        distance = haversine_np(current_lon, current_lat, target_lon, target_lat)
+        distance = haversine((current_lat, current_lon), (target_lat, target_lon))
         
         # If the current difference meets the threshold, break the loop
         if distance <= threshold:
@@ -135,12 +136,14 @@ def get_lat_lon(Latitude, Longitude, latlon, ntimes_nxtrack, threshold, directio
                 new_lon = Longitude[new_ntime][new_nxtrack]
                 
                 # Skip NaN values
-                if np.isnan(new_lat) or np.isnan(new_lon):
+                if str(new_lat) == "--" or str(new_lon) == "--":
                     continue
                 
                 # Calculate the difference for the new point
-                new_diff = haversine_np(new_lon,new_lat, target_lon, target_lat)
                 
+                new_diff = haversine((new_lat, new_lon), (target_lat, target_lon))
+
+                # new_diff = haversine((new_lon,new_lat), (target_lon, target_lat))
                 
                 # If this move results in a smaller difference, update the best move
                 if new_diff < min_diff:
