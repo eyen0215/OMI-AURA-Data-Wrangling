@@ -9,6 +9,7 @@ The project uses the following Python libraries:
 - `numpy`
 - `xarray`
 - `matplotlib`
+- `haversine`
 - `tqdm` *(optional, for progress bars)*
 
 
