@@ -5,6 +5,8 @@ from tqdm import tqdm
 from haversine import haversine
 
 #from: https://stackoverflow.com/questions/29545704/fast-haversine-approximation-python-pandas
+#this function is no longer in use after importing from the haversine lib.
+#if the haversine import no longer works, change this function name to "haversine"
 def haversine_np(lon1, lat1, lon2, lat2):
     """
     Calculate the great circle distance between two points
