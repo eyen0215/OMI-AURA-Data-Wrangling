@@ -4,9 +4,9 @@ import xarray as xr
 from tqdm import tqdm
 from haversine import haversine
 
+#this function is no longer in use after importing `haversine` from the haversine library 
+#if the haversine import no longer works (there may be an issue with masked arrays), change this function name to "haversine"
 #from: https://stackoverflow.com/questions/29545704/fast-haversine-approximation-python-pandas
-#this function is no longer in use after importing from the haversine lib.
-#if the haversine import no longer works, change this function name to "haversine"
 def haversine_np(lon1, lat1, lon2, lat2):
     """
     Calculate the great circle distance between two points
@@ -164,6 +164,15 @@ def get_lat_lon(Latitude, Longitude, latlon, ntimes_nxtrack, threshold, directio
 
 
 # Open the .nc4 file
+"""
+the nc4 file provided in this repo is just an example.
+It was downloaded from the NASA OMI-AURA dataset and a subplot was taken with the given lat/lon bounding box:
+
+min_lat = -18.788
+min_lon = -74.855
+max_lat = -12.788
+max_lon = -68.855
+"""
 file_path = "src\OMI-Aura_L2-OMSO2_2024m0910t1735-o107221_v003-2024m0911t122019.SUB.nc4"
 nc_file = Dataset(file_path, mode='r')
 
@@ -191,10 +200,7 @@ sulf_array = np.full((DISECTIONS, DISECTIONS), np.nan)
 lon_steps = np.linspace(np.nanmin(Longitude), np.nanmax(Longitude), DISECTIONS)
 lat_steps = np.linspace(np.nanmin(Latitude), np.nanmax(Latitude), DISECTIONS)
 
-#min/max of lat/lon of the specified omi aura data
-#used for testing the results of corners and sides of data range
-min_lat, min_lon = -18.788, -74.855
-max_lat, max_lon = -12.788, -68.855
+
 
 #min/max of lat/lon of the geo2d lat/lon file
 #used to find difference between the dimensions of the actual data downloaded and the specified data downloaded
