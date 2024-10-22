@@ -3,7 +3,8 @@ import numpy as np
 import xarray as xr
 from tqdm import tqdm
 from haversine import haversine
-
+import os
+import h5py
 #this function is no longer in use after importing `haversine` from the haversine library 
 #if the haversine import no longer works (there may be an issue with masked arrays), change this function name to "haversine"
 #from: https://stackoverflow.com/questions/29545704/fast-haversine-approximation-python-pandas
@@ -173,65 +174,79 @@ min_lon = -74.855
 max_lat = -12.788
 max_lon = -68.855
 """
-file_path = "src\OMI-Aura_L2-OMSO2_2024m0910t1735-o107221_v003-2024m0911t122019.SUB.nc4"
-nc_file = Dataset(file_path, mode='r')
+folder_paths = "src\OMI-AURA-Sample-Data"
+file_list = []
+for folder in os.listdir(folder_paths):
+    folder_path = os.path.join(folder_paths, folder)
+    # Check if it's indeed a folder
+    if os.path.isdir(folder_path):
+        # Get the file inside the folder
+        for file_name in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, file_name)
+            
+            # Add the file to the list
+            file_list.append(file_path)
+# file_path = "src\OMI-Aura_L2-OMSO2_2024m0910t1735-o107221_v003-2024m0911t122019.SUB.nc4"
 
-#setup data
-DataFields = nc_file["HDFEOS"]["SWATHS"]["OMI Total Column Amount SO2"]["Data Fields"]
-GeoLocationFields = nc_file["HDFEOS"]["SWATHS"]["OMI Total Column Amount SO2"]["Geolocation Fields"]
-
-Sulfur = DataFields.variables['ColumnAmountSO2'][:]
-Latitude, Longitude = GeoLocationFields["Latitude"][:], GeoLocationFields["Longitude"][:]
-
-#PARAMETERS
 
 THRESHOLD = 0.1 #Minimum loss when finding closest (ntime,nxtrack). Can be adjusted for speed
 DIRECTIONS = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)] #Directions that can be stepped. Can be adjusted for interesting effects
 DISECTIONS = 100 #dimensions of the array. ex: DISECTIONS = 100 generates 100x100 resultant arrays. Can be adjusted for speed
 
-ntimes = len(Latitude)
-nxtrack = len(Latitude[0])
+import h5py
+from tqdm import tqdm
+
+with h5py.File('src/Sulfur_arrays.h5', 'w') as f, h5py.File('src/Loss_arrays.h5', 'w') as g:
+    for idx, file in enumerate(file_list):
+        nc_file = Dataset(file, mode='r')
+
+        # Setup data
+        DataFields = nc_file["HDFEOS"]["SWATHS"]["OMI Total Column Amount SO2"]["Data Fields"]
+        GeoLocationFields = nc_file["HDFEOS"]["SWATHS"]["OMI Total Column Amount SO2"]["Geolocation Fields"]
+
+        Sulfur = DataFields.variables['ColumnAmountSO2'][:]
+        Latitude, Longitude = GeoLocationFields["Latitude"][:], GeoLocationFields["Longitude"][:]
+
+        # DIMENSIONS
+        ntimes = len(Latitude)
+        nxtrack = len(Latitude[0])
+
+        # Setup empty difference and sulfur array
+        diff_array = np.full((DISECTIONS, DISECTIONS), np.nan)  
+        sulf_array = np.full((DISECTIONS, DISECTIONS), np.nan)
+
+        # Setup lat/lon steps through area
+        lon_steps = np.linspace(np.nanmin(Longitude), np.nanmax(Longitude), DISECTIONS)
+        lat_steps = np.linspace(np.nanmin(Latitude), np.nanmax(Latitude), DISECTIONS)
+
+        # min/max of lat/lon of the geo2d lat/lon file
+        data_min_lat = np.nanmin(Latitude)
+        data_max_lat = np.nanmax(Latitude)
+        data_min_lon = np.nanmin(Longitude)
+        data_max_lon = np.nanmax(Longitude)
+
+        for i in tqdm(range(DISECTIONS)):
+            for j in range(DISECTIONS):
+                current_lon = lon_steps[j]
+                current_lat = lat_steps[i]
+
+                lat, lon, time, track, diff = get_lat_lon(
+                    Latitude=Latitude,
+                    Longitude=Longitude,
+                    latlon=(current_lat, current_lon),
+                    ntimes_nxtrack=(ntimes, nxtrack),
+                    threshold=THRESHOLD,
+                    directions=DIRECTIONS
+                )
+
+                diff_array[i][j] = diff
+                sulf_array[i][j] = Sulfur[time][track]
+
+        # Create datasets with unique names
+        f.create_dataset(f'sulfur_array_{idx}', data=sulf_array)
+        g.create_dataset(f'loss_array_{idx}', data=diff_array)
 
 
-diff_array = np.full((DISECTIONS, DISECTIONS), np.nan)  
-sulf_array = np.full((DISECTIONS, DISECTIONS), np.nan)
 
-#setup lat/lon steps through area
-lon_steps = np.linspace(np.nanmin(Longitude), np.nanmax(Longitude), DISECTIONS)
-lat_steps = np.linspace(np.nanmin(Latitude), np.nanmax(Latitude), DISECTIONS)
-
-
-
-#min/max of lat/lon of the geo2d lat/lon file
-#used to find difference between the dimensions of the actual data downloaded and the specified data downloaded
-'''
-this is relevant because when downloading the satellite from the NASA OMI AURA website, we specified a certain
-data range (seen above in min_lat, min_lon, max_lat, max_lon) but most of the data actually downloaded only 
-corresponds to a subsection of this area. Thus there are lat/lon points that don't have any corresponding data
-and we should decide whether we should keep them as NaN or smooth them out
-'''
-data_min_lat = np.nanmin(Latitude)
-data_max_lat = np.nanmax(Latitude)
-data_min_lon = np.nanmin(Longitude)
-data_max_lon = np.nanmax(Longitude)
-
-for i in tqdm(range(DISECTIONS)):
-    
-    for j in (range(DISECTIONS)):
-        current_lon = lon_steps[j]
-        current_lat = lat_steps[i]
-
-
-        lat, lon, time, track, diff = get_lat_lon(Latitude = Latitude,
-                                            Longitude= Longitude,
-                                            latlon = (current_lat, current_lon),
-                                            ntimes_nxtrack= (ntimes, nxtrack),
-                                            threshold = THRESHOLD,
-                                            directions = DIRECTIONS)
-        
-        diff_array[i][j] = diff
-        sulf_array[i][j] = Sulfur[time][track]
-
-
-plot_array([diff_array, sulf_array],
-           ["Loss", "Vertical Sulfur Column Amount"])
+        # plot_array(arrays = [diff_array, sulf_array],
+        #         labels = ["Loss", "Vertical Sulfur Column Amount"])
