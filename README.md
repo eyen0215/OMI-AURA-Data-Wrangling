@@ -10,7 +10,12 @@ The project uses the following Python libraries:
 - `xarray`
 - `matplotlib`
 - `haversine`
+- `imageio`
+- `h5py`
+- `os`
 - `tqdm` *(optional, for progress bars)*
+- `haversine` *(optional, for faster haversine function)*
+
 
 
 Install dependencies via:
