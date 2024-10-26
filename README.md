@@ -24,8 +24,6 @@ pip install -r requirements.txt
 ```
 
 ## Currently being worked on:
-- Optimize speed of stepping algorithm
 - Fix issue with the distance threshold being useless
 - Generalize the code to also work for other agents other than Sulphur Column Amount
-- Generalize the code to be able to run through multiple nc4 files generating a 3d time plot showing the changes in pollutant concentration over time
 
