@@ -13,8 +13,8 @@ The project uses the following Python libraries:
 - `imageio`
 - `h5py`
 - `os`
-- `tqdm` *(optional, for progress bars)*
-- `haversine` *(optional, for faster haversine function)*
+- `tqdm` 
+- `haversine` 
 
 
 
